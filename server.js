@@ -47,12 +47,29 @@ function maybe_bounce(req, res, sock, head) {
         return false;
     }
 
-    const subdomain = tldjs.getSubdomain(hostname);
+    let subdomain = tldjs.getSubdomain(hostname);
     if (!subdomain) {
         return false;
     }
 
-    const client = clients[subdomain];
+    let client = clients[subdomain];
+
+    if(!client || subdomain.indexOf('.') !== -1) {
+
+        subdomain = subdomain.split('.');
+
+        for(var i = 0; i <= subdomain.length; i++) {
+
+            var  client_id = subdomain.slice(0, i).join('.');
+            client = clients[client_id];
+
+            if(client) {
+                break;
+            }
+
+        }
+
+    }
 
     // no such subdomain
     // we use 502 error to the client to signify we can't service the request
@@ -185,7 +202,6 @@ function maybe_bounce(req, res, sock, head) {
 
 // create a new tunnel with `id`
 function new_client(id, opt, cb) {
-
     // can't ask for id already is use
     // TODO check this new id again
     if (clients[id]) {
@@ -302,7 +318,8 @@ module.exports = function(opt) {
 
     server.on('request', function(req, res) {
         debug('request %s', req.url);
-        if (maybe_bounce(req, res, null, null)) {
+        var configuredHost = opt.host && [opt.host, opt.port].join(':');
+        if (configuredHost !== req.headers.host && maybe_bounce(req, res, null, null)) {
             return;
         };
 
