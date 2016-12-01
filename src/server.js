@@ -7,7 +7,7 @@ import http_proxy from 'http-proxy';
 import http from 'http';
 import Promise from 'bluebird';
 
-import Proxy from './proxy';
+import LocalProxy from './local_proxy';
 import rand_id from '../lib/rand_id';
 import BindingAgent from '../lib/BindingAgent';
 
@@ -205,7 +205,7 @@ function new_client(id, opt, cb) {
         max_tcp_sockets: opt.max_tcp_sockets
     };
 
-    const client = Proxy(popt);
+    const client = LocalProxy(popt);
 
     // add to clients map immediately
     // avoiding races with other clients requesting same id

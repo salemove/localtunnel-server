@@ -3,9 +3,9 @@ import EventEmitter from 'events';
 import log from 'bookrc';
 import Debug from 'debug';
 
-const Proxy = function(opt) {
-    if (!(this instanceof Proxy)) {
-        return new Proxy(opt);
+const LocalProxy = function(opt) {
+    if (!(this instanceof LocalProxy)) {
+        return new LocalProxy(opt);
     }
 
     const self = this;
@@ -26,9 +26,9 @@ const Proxy = function(opt) {
     self.debug = Debug(`localtunnel:server:${self.id}`);
 };
 
-Proxy.prototype.__proto__ = EventEmitter.prototype;
+LocalProxy.prototype.__proto__ = EventEmitter.prototype;
 
-Proxy.prototype.start = function(cb) {
+LocalProxy.prototype.start = function(cb) {
     const self = this;
     const server = self.server;
 
@@ -66,7 +66,7 @@ Proxy.prototype.start = function(cb) {
     self._maybe_destroy();
 };
 
-Proxy.prototype._maybe_destroy = function() {
+LocalProxy.prototype._maybe_destroy = function() {
     const self = this;
 
     clearTimeout(self.conn_timeout);
@@ -82,7 +82,7 @@ Proxy.prototype._maybe_destroy = function() {
 };
 
 // new socket connection from client for tunneling requests to client
-Proxy.prototype._handle_socket = function(socket) {
+LocalProxy.prototype._handle_socket = function(socket) {
     const self = this;
 
     // no more socket connections allowed
@@ -128,7 +128,7 @@ Proxy.prototype._handle_socket = function(socket) {
     self._process_waiting();
 };
 
-Proxy.prototype._process_waiting = function() {
+LocalProxy.prototype._process_waiting = function() {
     const self = this;
     const wait_cb = self.waiting.shift();
     if (wait_cb) {
@@ -137,7 +137,7 @@ Proxy.prototype._process_waiting = function() {
     }
 };
 
-Proxy.prototype._cleanup = function() {
+LocalProxy.prototype._cleanup = function() {
     const self = this;
     self.debug('closed tcp socket for client(%s)', self.id);
 
@@ -149,7 +149,7 @@ Proxy.prototype._cleanup = function() {
     self.emit('end');
 };
 
-Proxy.prototype.next_socket = function(handler) {
+LocalProxy.prototype.next_socket = function(handler) {
     const self = this;
 
     // socket is a tcp connection back to the user hosting the site
@@ -181,4 +181,4 @@ Proxy.prototype.next_socket = function(handler) {
     });
 };
 
-export default Proxy;
+export default LocalProxy;
