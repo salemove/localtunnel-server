@@ -11,37 +11,21 @@ const logError = new Debug('localtunnel:server:error');
 export default function createTunnel(id, {endCallback, startCallback}) {
   let sockets = [];
   const debug = new Debug(`localtunnel:server:${id}`);
-
-  // new tcp server to service requests for this client
   const server = net.createServer();
 
   const socketsChange = new Rx.ReplaySubject(1);
-  const newSockets = new Rx.Subject();
   const serverClose = new Rx.Subject();
   const requests = new Rx.Subject();
 
-  server.on('close', () => serverClose.next());
-  server.on('connection', socket => newSockets.next(socket));
+  const markSocketAsInactive = socket => {
+    socket.active = false;
+    socketsChange.next(sockets);
+  };
 
-  server.on('error', function(err) {
-    // where do these errors come from?
-    // other side creates a connection and then is killed?
-    if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
-      return;
-    }
-
-    logError(err);
-  });
-
-  server.listen(function() {
-    const port = server.address().port;
-    debug('tcp server listening on port: %d', port);
-
-    // Adding max_conn_count as this is required by the client
-    startCallback({port: port, max_conn_count: 10});
-  });
-
-  newSockets.subscribe(handleSocket);
+  const markSocketAsActive = socket => {
+    socket.active = true;
+    socketsChange.next(sockets);
+  };
 
   const inactivityTimer = Rx.Observable.timer(5000);
 
@@ -56,36 +40,6 @@ export default function createTunnel(id, {endCallback, startCallback}) {
     .take(1);
 
   const stop = Rx.Observable.merge(inactivity, serverClose).take(1);
-
-  stop.subscribe(() => {
-    debug('closed tcp socket for client');
-    try {
-      server.close();
-    } catch (err) {}
-    endCallback();
-  });
-
-  const markSocketAsInactive = socket => {
-    socket.active = false;
-    socketsChange.next(sockets);
-  };
-
-  const markSocketAsActive = socket => {
-    socket.active = true;
-    socketsChange.next(sockets);
-  };
-
-  requests
-    .takeUntil(stop)
-    .flatMap(request =>
-      getActiveSocket
-        .do(markSocketAsInactive)
-        .map(socket => ({request, socket})))
-    .subscribe(
-      ({request, socket}) =>
-        request(socket).then(() => markSocketAsActive(socket)),
-      err => logError('Error forwarding request', err)
-    );
 
   function handleSocket(socket) {
     debug('new connection from: %s:%s', socket.address().address, socket.address().port);
@@ -156,6 +110,47 @@ export default function createTunnel(id, {endCallback, startCallback}) {
       });
     });
   }
+
+  server.on('close', () => serverClose.next());
+  server.on('connection', socket => handleSocket(socket));
+
+  server.on('error', function(err) {
+    // where do these errors come from?
+    // other side creates a connection and then is killed?
+    if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
+      return;
+    }
+
+    logError(err);
+  });
+
+  server.listen(() => {
+    const port = server.address().port;
+    debug('tcp server listening on port: %d', port);
+
+    // Adding max_conn_count as this is required by the client
+    startCallback({port: port, max_conn_count: 10});
+  });
+
+  stop.subscribe(() => {
+    debug('closed tcp socket for client');
+    try {
+      server.close();
+    } catch (err) {}
+    endCallback();
+  });
+
+  requests
+    .takeUntil(stop)
+    .flatMap(request =>
+      getActiveSocket
+        .do(markSocketAsInactive)
+        .map(socket => ({request, socket})))
+    .subscribe(
+      ({request, socket}) =>
+        request(socket).then(() => markSocketAsActive(socket)),
+      err => logError('Error forwarding request', err)
+    );
 
   return {forwardRequest};
 }
