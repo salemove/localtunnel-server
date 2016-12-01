@@ -1,4 +1,3 @@
-import log from 'bookrc';
 import express from 'express';
 import tldjs from 'tldjs';
 import on_finished from 'on-finished';
@@ -12,13 +11,14 @@ import generateId from 'uuid/v4';
 import BindingAgent from './BindingAgent';
 
 const debug = new Debug('localtunnel:server');
+const logError = new Debug('localtunnel:server:error');
 
 const proxy = http_proxy.createProxyServer({
   target: 'http://localtunnel.github.io'
 });
 
 proxy.on('error', function(err) {
-  log.error(err);
+  logError(err);
 });
 
 proxy.on('proxyReq', function(proxyReq, req, res, options) {

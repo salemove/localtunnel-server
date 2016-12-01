@@ -1,7 +1,8 @@
 import net from 'net';
 import EventEmitter from 'events';
-import log from 'bookrc';
 import Debug from 'debug';
+
+const logError = new Debug('localtunnel:server:error');
 
 const LocalProxy = function(opt) {
   if (!(this instanceof LocalProxy)) {
@@ -48,7 +49,7 @@ LocalProxy.prototype.start = function(cb) {
       return;
     }
 
-    log.error(err);
+    logError(err);
   });
 
   server.listen(function() {
@@ -164,7 +165,7 @@ LocalProxy.prototype.next_socket = function(handler) {
   self.debug('processing request');
   handler(sock)
     .catch(err => {
-      log.error(err);
+      logError(err);
     })
     .finally(() => {
       if (!sock.destroyed) {
