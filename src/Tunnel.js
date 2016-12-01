@@ -1,10 +1,10 @@
 import net from 'net';
 import Debug from 'debug';
-import {isFinished, default as onFinished} from 'on-finished';
+import {isFinished} from 'on-finished';
 import BindingAgent from './BindingAgent';
-import http from 'http';
 import Rx from 'rxjs/Rx';
 import R from 'ramda';
+import httpProxy from 'http-proxy';
 
 export default function createTunnel(id, {endCallback, startCallback}) {
   const debug = new Debug(`localtunnel:server:${id}`);
@@ -74,37 +74,23 @@ export default function createTunnel(id, {endCallback, startCallback}) {
       }
 
       const agent = new BindingAgent({socket: socket});
-
-      const opt = {
-        path: req.url,
+      const apiProxy = httpProxy.createProxyServer({
         agent: agent,
-        method: req.method,
-        headers: req.headers
-      };
+        target: {
+          host: socket.address().address,
+          port: socket.address().port
+        }
+      });
 
-      return new Promise(resolve => {
-        // what if error making this request?
-        const client_req = http.request(opt, function(client_res) {
-          // write response code and headers
-          res.writeHead(client_res.statusCode, client_res.headers);
-
-          client_res.pipe(res);
-          onFinished(client_res, function(err) {
-            if (err) logError('client_res error', err);
+      return new Promise((resolve, reject) => {
+        apiProxy.web(req, res, err => {
+          if (err) {
+            debug('proxy error', err);
+            reject();
+          } else {
             resolve();
-          });
+          }
         });
-
-        // happens if the other end dies while we are making the request
-        // so we just end the req and move on
-        // we can't really do more with the response here because headers
-        // may already be sent
-        client_req.on('error', err => {
-          logError('client request error', err);
-          req.connection.destroy();
-        });
-
-        req.pipe(client_req);
       });
     });
   }

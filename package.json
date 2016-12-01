@@ -16,7 +16,7 @@
     "dddos": "^0.1.1",
     "debug": "~> 2.3.3",
     "express": "~> 4.14.0",
-    "http-proxy": "~> 1.15.2",
+    "http-proxy": "^1.16.2",
     "on-finished": "~> 2.3.0",
     "optimist": "~> 0.6.1",
     "ramda": "^0.22.1",
