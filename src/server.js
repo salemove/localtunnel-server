@@ -23,16 +23,9 @@ function newTunnel(id, maxTCPSockets, cb) {
     endCallback: () => tunnels.remove(id)
   });
 
-  tunnel.start((err, info) => {
-    if (err) {
-      tunnels.remove(id);
-      cb(err);
-      return;
-    }
-
+  tunnel.start(info => {
     tunnels.add(id, tunnel);
-
-    cb(err, R.merge(info, {id}));
+    cb(R.merge(info, {id}));
   });
 }
 
@@ -57,12 +50,7 @@ module.exports = function(opt) {
       const id = generateId();
       debug('making new tunnel with id %s', id);
 
-      newTunnel(id, opt.max_tcp_sockets, function(err, info) {
-        if (err) {
-          res.statusCode = 500;
-          return res.end(err.message);
-        }
-
+      newTunnel(id, opt.max_tcp_sockets, function(info) {
         const url = schema + '://' + id + '.' + req.headers.host;
         res.json(R.merge(info, {url: url}));
       });

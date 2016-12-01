@@ -7,10 +7,6 @@ import http from 'http';
 const logError = new Debug('localtunnel:server:error');
 
 const Tunnel = function(opt, {endCallback}) {
-  if (!(this instanceof Tunnel)) {
-    return new Tunnel(opt);
-  }
-
   const self = this;
 
   self.endCallback = endCallback;
@@ -34,12 +30,6 @@ Tunnel.prototype.start = function(cb) {
   const self = this;
   const server = self.server;
 
-  if (self.started) {
-    cb(new Error('already started'));
-    return;
-  }
-  self.started = true;
-
   server.on('close', self._cleanup.bind(self));
   server.on('connection', self._handle_socket.bind(self));
 
@@ -57,12 +47,7 @@ Tunnel.prototype.start = function(cb) {
     const port = server.address().port;
     self.debug('tcp server listening on port: %d', port);
 
-    cb(null, {
-      // port for lt client tcp connections
-      port: port,
-      // maximum number of tcp connections allowed by lt client
-      max_conn_count: self.max_tcp_sockets
-    });
+    cb({port: port, max_conn_count: self.max_tcp_sockets});
   });
 
   self._maybe_destroy();
