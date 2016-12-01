@@ -9,7 +9,7 @@ import Promise from 'bluebird';
 
 import LocalProxy from './local_proxy';
 import generateId from 'uuid/v4';
-import BindingAgent from '../lib/BindingAgent';
+import BindingAgent from './BindingAgent';
 
 const debug = new Debug('localtunnel:server');
 
