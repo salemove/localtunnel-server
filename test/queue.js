@@ -1,19 +1,19 @@
-var http = require('http');
-var url = require('url');
-var assert = require('assert');
-var localtunnel = require('localtunnel');
+const http = require('http');
+const url = require('url');
+const assert = require('assert');
+const localtunnel = require('localtunnel');
 
 suite('queue');
 
-var localtunnel_server = require('../src/server')({
+const localtunnel_server = require('../src/server')({
   max_tcp_sockets: 1
 });
 
-var server;
-var lt_server_port;
+let server;
+let lt_server_port;
 
 before('set up localtunnel server', function(done) {
-  var lt_server = localtunnel_server.listen(function() {
+  const lt_server = localtunnel_server.listen(function() {
     lt_server_port = lt_server.address().port;
     done();
   });
@@ -30,7 +30,7 @@ before('set up local http server', function(done) {
   });
 
   server.listen(function() {
-    var port = server.address().port;
+    const port = server.address().port;
 
     test._fake_port = port;
     done();
@@ -38,13 +38,13 @@ before('set up local http server', function(done) {
 });
 
 before('set up localtunnel client', function(done) {
-  var opt = {
+  const opt = {
     host: 'http://localhost:' + lt_server_port
   };
 
   localtunnel(test._fake_port, opt, function(err, tunnel) {
     assert.ifError(err);
-    var url = tunnel.url;
+    const url = tunnel.url;
     assert.ok(new RegExp('^http://.*localhost:' + lt_server_port + '$').test(url));
     test._fake_url = url;
     done(err);
@@ -52,11 +52,11 @@ before('set up localtunnel client', function(done) {
 });
 
 test('query localtunnel server w/ ident', function(done) {
-  var uri = test._fake_url;
-  var hostname = url.parse(uri).hostname;
+  const uri = test._fake_url;
+  const hostname = url.parse(uri).hostname;
 
-  var count = 0;
-  var opt = {
+  let count = 0;
+  const opt = {
     host: 'localhost',
     port: lt_server_port,
     agent: false,
@@ -66,8 +66,8 @@ test('query localtunnel server w/ ident', function(done) {
     path: '/'
   };
 
-  var num_requests = 2;
-  var responses = 0;
+  const num_requests = 2;
+  let responses = 0;
 
   function maybe_done() {
     if (++responses >= num_requests) {
@@ -79,7 +79,7 @@ test('query localtunnel server w/ ident', function(done) {
     opt.headers['x-count'] = count++;
     http.get(opt, function(res) {
       res.setEncoding('utf8');
-      var body = '';
+      let body = '';
 
       res.on('data', function(chunk) {
         body += chunk;
@@ -92,7 +92,7 @@ test('query localtunnel server w/ ident', function(done) {
     });
   }
 
-  for (var i = 0; i < num_requests; ++i) {
+  for (let i = 0; i < num_requests; ++i) {
     make_req();
   }
 });

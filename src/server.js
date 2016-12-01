@@ -55,8 +55,8 @@ function maybe_bounce(req, res, sock, head) {
   if (!client || subdomain.indexOf('.') !== -1) {
     subdomain = subdomain.split('.');
 
-    for (var i = 0; i <= subdomain.length; i++) {
-      var client_id = subdomain.slice(0, i).join('.');
+    for (let i = 0; i <= subdomain.length; i++) {
+      const client_id = subdomain.slice(0, i).join('.');
       client = clients[client_id];
 
       if (client) {
@@ -309,7 +309,7 @@ module.exports = function(opt) {
 
   server.on('request', function(req, res) {
     debug('request %s', req.url);
-    var configuredHost = opt.host;
+    const configuredHost = opt.host;
     if (configuredHost !== req.headers.host && maybe_bounce(req, res, null, null)) {
       return;
     }
