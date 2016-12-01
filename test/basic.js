@@ -65,7 +65,7 @@ before('set up localtunnel client', function(done) {
     localtunnel(test._fake_port, opt, function(err, tunnel) {
         assert.ifError(err);
         var url = tunnel.url;
-        assert.ok(new RegExp('^http:\/\/.*localhost:' + lt_server_port + '$').test(url));
+        assert.ok(new RegExp('^http://.*localhost:' + lt_server_port + '$').test(url));
         test._fake_url = url;
         done(err);
     });
@@ -112,7 +112,7 @@ test('request specific domain', function(done) {
     localtunnel(test._fake_port, opt, function(err, tunnel) {
         assert.ifError(err);
         var url = tunnel.url;
-        assert.ok(new RegExp('^http:\/\/.*localhost:' + lt_server_port + '$').test(url));
+        assert.ok(new RegExp('^http://.*localhost:' + lt_server_port + '$').test(url));
         test._fake_url = url;
         done(err);
     });
