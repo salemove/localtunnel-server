@@ -14,54 +14,26 @@ const debug = new Debug('localtunnel:server');
 
 const tunnels = new TunnelKeeper();
 
-function maybeProxyRequestToClient(configuredHost, req, res, sock, head) {
-  const hostname = req.headers.host;
-  if (!hostname) return false;
-
-  const configuredHostIndex = hostname.lastIndexOf(configuredHost);
-  if (configuredHostIndex === -1) return false;
-
-  const tunnelId = hostname.slice(0, configuredHostIndex - 1);
-  const client = tunnels.find(tunnelId);
-
-  if (!client) {
-    if (res) {
-      res.statusCode = 502;
-      res.end(`no active client for '${tunnelId}'`);
-      req.connection.destroy();
-    } else if (sock) {
-      sock.destroy();
-    }
-
-    return true;
-  }
-
-  let finished = false;
-  if (sock) {
-    sock.once('end', function() {
-      finished = true;
-    });
-  } else if (res) {
-    // flag if we already finished before we get a socket
-    // we can't respond to these requests
-    on_finished(res, function(err) {
-      finished = true;
-      req.connection.destroy();
-    });
-  } else {
-    // not something we are expecting, need a sock or a res
+function maybeProxyHttpToClient(configuredHost, req, res) {
+  const tunnel = findTunnel(configuredHost, req);
+  if (!tunnel) {
+    res.statusCode = 502;
+    res.end(`No tunnel for ${req.headers.host}`);
     req.connection.destroy();
     return true;
   }
 
-  // TODO add a timeout, if we run out of sockets, then just 502
+  let finished = false;
+  // flag if we already finished before we get a socket
+  // we can't respond to these requests
+  on_finished(res, function(err) {
+    finished = true;
+    req.connection.destroy();
+  });
 
-  // get client port
-  client.next_socket(async socket => {
-    // the request already finished or client disconnected
-    if (finished) {
-      return;
-    }
+  tunnel.next_socket(async socket => {
+    // the request already finished or tunnel disconnected
+    if (finished) return;
 
     // happens when client upstream is disconnected (or disconnects)
     // and the proxy iterates the waiting list and clears the callbacks
@@ -73,46 +45,13 @@ function maybeProxyRequestToClient(configuredHost, req, res, sock, head) {
     // if no socket becomes available within some time,
     // we just tell the user no resource available to service request
     if (!socket) {
-      if (res) {
-        res.statusCode = 504;
-        res.end();
-      }
-
-      if (sock) {
-        sock.destroy();
-      }
-
+      res.statusCode = 504;
+      res.end();
       req.connection.destroy();
       return;
     }
 
-    // websocket requests are special in that we simply re-create the header info
-    // and directly pipe the socket data
-    // avoids having to rebuild the request and handle upgrades via the http client
-    if (res === null) {
-      const arr = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
-      for (let i = 0; i < (req.rawHeaders.length - 1); i += 2) {
-        arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
-      }
-
-      arr.push('');
-      arr.push('');
-
-      socket.pipe(sock).pipe(socket);
-      socket.write(arr.join('\r\n'));
-
-      await new Promise(resolve => {
-        socket.once('end', resolve);
-      });
-
-      return;
-    }
-
-    // regular http request
-
-    const agent = new BindingAgent({
-      socket: socket
-    });
+    const agent = new BindingAgent({socket: socket});
 
     const opt = {
       path: req.url,
@@ -148,6 +87,67 @@ function maybeProxyRequestToClient(configuredHost, req, res, sock, head) {
   return true;
 }
 
+function maybeProxySocketToClient(configuredHost, req, sock, head) {
+  const tunnel = findTunnel(configuredHost, req);
+  if (!tunnel) {
+    sock.destroy();
+    return true;
+  }
+
+  let finished = false;
+  sock.once('end', () => {
+    finished = true;
+  });
+
+  tunnel.next_socket(async socket => {
+    // the request already finished or tunnel disconnected
+    if (finished)
+      return;
+
+    // happens when client upstream is disconnected (or disconnects)
+    // and the proxy iterates the waiting list and clears the callbacks
+    // we gracefully inform the user and kill their conn
+    // without this, the browser will leave some connections open
+    // and try to use them again for new requests
+    // we cannot have this as we need bouncy to assign the requests again
+    // TODO(roman) we could instead have a timeout above
+    // if no socket becomes available within some time,
+    // we just tell the user no resource available to service request
+    if (!socket) {
+      sock.destroy();
+      req.connection.destroy();
+      return;
+    }
+
+    // websocket requests are special in that we simply re-create the header info
+    // and directly pipe the socket data
+    // avoids having to rebuild the request and handle upgrades via the http client
+    const arr = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
+    for (let i = 0; i < (req.rawHeaders.length - 1); i += 2) {
+      arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+    }
+
+    arr.push('');
+    arr.push('');
+
+    socket.pipe(sock).pipe(socket);
+    socket.write(arr.join('\r\n'));
+
+    await new Promise(resolve => {
+      socket.once('end', resolve);
+    });
+  });
+
+  return true;
+}
+
+function findTunnel(configuredHost, req) {
+  const hostname = req.headers.host;
+  const configuredHostIndex = hostname.lastIndexOf(configuredHost);
+  const tunnelId = hostname.slice(0, configuredHostIndex - 1);
+  return tunnels.find(tunnelId);
+}
+
 function newTunnel(id, maxTCPSockets, cb) {
   const opts = {id, maxTCPSockets};
   const tunnel = new Tunnel(opts, {
@@ -173,12 +173,20 @@ module.exports = function(opt) {
   const server = http.createServer();
   const configuredHost = opt.host;
 
+  const skipProxy = req => {
+    const hostname = req.headers.host;
+    const missingHostname = !hostname;
+    const pointsToRootHost = configuredHost === hostname;
+    const includesConfiguredHost = hostname.lastIndexOf(configuredHost) === -1;
+    return missingHostname || pointsToRootHost || includesConfiguredHost;
+  };
+
   app.get('/', function(req, res) {
     if (req.query.new === undefined) {
       res.json({hello: 'Hello, this is localtunnel server'});
     } else {
       const id = generateId();
-      debug('making new client with id %s', id);
+      debug('making new tunnel with id %s', id);
 
       newTunnel(id, opt.max_tcp_sockets, function(err, info) {
         if (err) {
@@ -199,7 +207,7 @@ module.exports = function(opt) {
   server.on('request', function(req, res) {
     debug('request %s', req.url);
 
-    if (configuredHost !== req.headers.host && maybeProxyRequestToClient(configuredHost, req, res, null, null))
+    if (!skipProxy(req) && maybeProxyHttpToClient(configuredHost, req, res))
       return;
 
     app(req, res);
@@ -208,7 +216,7 @@ module.exports = function(opt) {
   server.on('upgrade', function(req, socket, head) {
     debug('upgrade %s', req.url);
 
-    if (maybeProxyRequestToClient(configuredHost, req, null, socket, head))
+    if (!skipProxy(req) && maybeProxySocketToClient(configuredHost, req, socket, head))
       return;
 
     socket.destroy();
