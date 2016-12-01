@@ -5,6 +5,7 @@ import Debug from 'debug';
 import http_proxy from 'http-proxy';
 import http from 'http';
 import Promise from 'bluebird';
+import R from 'ramda';
 
 import LocalProxy from './LocalProxy';
 import generateId from 'uuid/v4';
@@ -229,28 +230,26 @@ function new_client(id, opt, cb) {
   });
 }
 
-module.exports = function(opt) {
-  opt = opt || {};
-
+module.exports = function(opt = {}) {
   const schema = opt.secure ? 'https' : 'http';
-
   const app = express();
+  const server = http.createServer();
 
   app.get('/', function(req, res) {
     if (req.query.new === undefined) {
       res.json({hello: 'Hello, this is localtunnel server'});
     } else {
-      const req_id = generateId();
-      debug('making new client with id %s', req_id);
-      new_client(req_id, opt, function(err, info) {
+      const id = generateId();
+      debug('making new client with id %s', id);
+
+      new_client(id, opt, function(err, info) {
         if (err) {
           res.statusCode = 500;
           return res.end(err.message);
         }
 
-        const url = schema + '://' + req_id + '.' + req.headers.host;
-        info.url = url;
-        res.json(info);
+        const url = schema + '://' + id + '.' + req.headers.host;
+        res.json(R.merge(info, {url: url}));
       });
     }
   });
@@ -259,22 +258,21 @@ module.exports = function(opt) {
     res.json({tunnels: stats.tunnels});
   });
 
-  const server = http.createServer();
-
   server.on('request', function(req, res) {
     debug('request %s', req.url);
+
     const configuredHost = opt.host;
-    if (configuredHost !== req.headers.host && maybe_bounce(req, res, null, null)) {
+    if (configuredHost !== req.headers.host && maybe_bounce(req, res, null, null))
       return;
-    }
 
     app(req, res);
   });
 
   server.on('upgrade', function(req, socket, head) {
-    if (maybe_bounce(req, null, socket, head)) {
+    debug('upgrade %s', req.url);
+
+    if (maybe_bounce(req, null, socket, head))
       return;
-    }
 
     socket.destroy();
   });
