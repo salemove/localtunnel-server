@@ -17,7 +17,6 @@ module.exports = {
     "fp/no-let": "off",
     "fp/no-mutation": "off",
     "fp/no-nil": "off",
-    "fp/no-rest-parameters": "off",
     "fp/no-unused-expression": "off",
     "fp/no-this": "off",
     "fp/no-mutating-methods": "off",
