@@ -8,7 +8,7 @@ import http from 'http';
 import Promise from 'bluebird';
 
 import LocalProxy from './local_proxy';
-import rand_id from '../lib/rand_id';
+import generateId from 'uuid/v4';
 import BindingAgent from '../lib/BindingAgent';
 
 const debug = new Debug('localtunnel:server');
@@ -196,7 +196,7 @@ function new_client(id, opt, cb) {
   // can't ask for id already is use
   // TODO check this new id again
   if (clients[id]) {
-    id = rand_id();
+    id = generateId();
   }
 
   const popt = {
@@ -241,7 +241,7 @@ module.exports = function(opt) {
       return next();
     }
 
-    const req_id = rand_id();
+    const req_id = generateId();
     debug('making new client with id %s', req_id);
     new_client(req_id, opt, function(err, info) {
       if (err) {

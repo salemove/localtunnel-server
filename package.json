@@ -24,7 +24,8 @@
     "localenv": "~> 0.2.2",
     "on-finished": "~> 2.3.0",
     "optimist": "~> 0.6.1",
-    "tldjs": "~> 1.7.0"
+    "tldjs": "~> 1.7.0",
+    "uuid": "^3.0.1"
   },
   "devDependencies": {
     "babel-eslint": "^7.1.1",
