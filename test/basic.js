@@ -126,7 +126,8 @@ test('request domain that is too long', function(done) {
 
     localtunnel(test._fake_port, opt, function(err, tunnel) {
         assert(err);
-        assert.equal(err.message, 'Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
+        assert.equal(err.message, 'Invalid subdomain. ' +
+          'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
         done();
     });
 });
@@ -139,7 +140,8 @@ test('request uppercase domain', function(done) {
 
     localtunnel(test._fake_port, opt, function(err, tunnel) {
         assert(err);
-        assert.equal(err.message, 'Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
+        assert.equal(err.message, 'Invalid subdomain. ' +
+          'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
         done();
     });
 });
