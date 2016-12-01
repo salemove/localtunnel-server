@@ -259,36 +259,6 @@ module.exports = function(opt) {
     res.json({tunnels: stats.tunnels});
   });
 
-  app.get('/:req_id', function(req, res, next) {
-    const req_id = req.params.req_id;
-
-    // limit requested hostnames to 63 characters
-    if (!/^[a-z0-9.]{4,63}$/.test(req_id)) {
-      const err = new Error('Invalid subdomain. ' +
-        'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
-      err.statusCode = 403;
-      return next(err);
-    }
-
-    debug('making new client with id %s', req_id);
-    new_client(req_id, opt, function(err, info) {
-      if (err) {
-        return next(err);
-      }
-
-      const url = schema + '://' + req_id + '.' + req.headers.host;
-      info.url = url;
-      res.json(info);
-    });
-  });
-
-  app.use(function(err, _req, res, _next) {
-    const status = err.statusCode || err.status || 500;
-    res.status(status).json({
-      message: err.message
-    });
-  });
-
   const server = http.createServer();
 
   server.on('request', function(req, res) {

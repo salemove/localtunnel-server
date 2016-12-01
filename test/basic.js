@@ -103,49 +103,6 @@ test('query localtunnel server w/ ident', function(done) {
   req.end();
 });
 
-test('request specific domain', function(done) {
-  const opt = {
-    host: 'http://localhost:' + lt_server_port,
-    subdomain: 'abcd'
-  };
-
-  localtunnel(test._fake_port, opt, function(err, tunnel) {
-    assert.ifError(err);
-    const url = tunnel.url;
-    assert.ok(new RegExp('^http://.*localhost:' + lt_server_port + '$').test(url));
-    test._fake_url = url;
-    done(err);
-  });
-});
-
-test('request domain that is too long', function(done) {
-  const opt = {
-    host: 'http://localhost:' + lt_server_port,
-    subdomain: 'thisdomainisoutsidethesizeofwhatweallowwhichissixtythreecharacters'
-  };
-
-  localtunnel(test._fake_port, opt, function(err, tunnel) {
-    assert(err);
-    assert.equal(err.message, 'Invalid subdomain. ' +
-          'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
-    done();
-  });
-});
-
-test('request uppercase domain', function(done) {
-  const opt = {
-    host: 'http://localhost:' + lt_server_port,
-    subdomain: 'ABCD'
-  };
-
-  localtunnel(test._fake_port, opt, function(err, tunnel) {
-    assert(err);
-    assert.equal(err.message, 'Invalid subdomain. ' +
-          'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
-    done();
-  });
-});
-
 after('shutdown', function() {
   localtunnel_server.close();
 });
