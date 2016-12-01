@@ -22,7 +22,6 @@ module.exports = {
     "fp/no-mutating-methods": "off",
     "fp/no-delete": "off",
     "fp/no-loops": "off",
-    "fp/no-events": "off",
     "camelcase": "off",
     "no-warning-comments": "off",
     "handle-callback-err": "off",

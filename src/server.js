@@ -31,11 +31,6 @@ proxy.on('proxyReq', function(proxyReq, req, res, options) {
 
 let tunnels = {};
 
-// proxy statistics
-const stats = {
-  tunnels: 0
-};
-
 // handle proxying a request to a client
 // will wait for a tunnel socket to become available
 function maybe_bounce(req, res, sock, head) {
@@ -193,13 +188,10 @@ function maybe_bounce(req, res, sock, head) {
 
 function newTunnel(id, maxTCPSockets, cb) {
   const opts = {id, maxTCPSockets};
-  const tunnel = new Tunnel(opts);
-
-  tunnels = R.assoc(id, tunnel, tunnels);
-
-  tunnel.on('end', function() {
-    --stats.tunnels;
-    tunnels = R.dissoc(id, tunnels);
+  const tunnel = new Tunnel(opts, {
+    endCallback: () => {
+      tunnels = R.dissoc(id, tunnels);
+    }
   });
 
   tunnel.start((err, info) => {
@@ -209,7 +201,7 @@ function newTunnel(id, maxTCPSockets, cb) {
       return;
     }
 
-    ++stats.tunnels;
+    tunnels = R.assoc(id, tunnel, tunnels);
 
     cb(err, R.merge(info, {id}));
   });
@@ -240,7 +232,7 @@ module.exports = function(opt = {}) {
   });
 
   app.get('/api/status', function(_req, res) {
-    res.json({tunnels: stats.tunnels});
+    res.json({tunnels: R.keys(tunnels).length});
   });
 
   server.on('request', function(req, res) {

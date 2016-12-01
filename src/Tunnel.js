@@ -1,16 +1,16 @@
 import net from 'net';
-import EventEmitter from 'events';
 import Debug from 'debug';
 
 const logError = new Debug('localtunnel:server:error');
 
-const Tunnel = function(opt) {
+const Tunnel = function(opt, {endCallback}) {
   if (!(this instanceof Tunnel)) {
     return new Tunnel(opt);
   }
 
   const self = this;
 
+  self.endCallback = endCallback;
   self.sockets = [];
   self.waiting = [];
   self.id = opt.id;
@@ -26,8 +26,6 @@ const Tunnel = function(opt) {
 
   self.debug = new Debug(`localtunnel:server:${self.id}`);
 };
-
-Tunnel.prototype.__proto__ = EventEmitter.prototype;
 
 Tunnel.prototype.start = function(cb) {
   const self = this;
@@ -147,7 +145,7 @@ Tunnel.prototype._cleanup = function() {
   // clear waiting by ending responses, (requests?)
   self.waiting.forEach(handler => handler(null));
 
-  self.emit('end');
+  self.endCallback();
 };
 
 Tunnel.prototype.next_socket = function(handler) {
