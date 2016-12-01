@@ -28,6 +28,7 @@ function newTunnel(id, cb) {
 module.exports = function(opt) {
   const schema = opt.secure ? 'https' : 'http';
   const app = express();
+  app.enable('trust proxy');
   app.use(new DDDoS({
     checkInterval: 5000,
     rules: [{
