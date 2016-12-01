@@ -236,43 +236,27 @@ module.exports = function(opt) {
 
   const app = express();
 
-  app.get('/', function(req, res, next) {
+  app.get('/', function(req, res) {
     if (req.query.new === undefined) {
-      return next();
+      res.json({hello: 'Hello, this is localtunnel server'});
+    } else {
+      const req_id = generateId();
+      debug('making new client with id %s', req_id);
+      new_client(req_id, opt, function(err, info) {
+        if (err) {
+          res.statusCode = 500;
+          return res.end(err.message);
+        }
+
+        const url = schema + '://' + req_id + '.' + req.headers.host;
+        info.url = url;
+        res.json(info);
+      });
     }
-
-    const req_id = generateId();
-    debug('making new client with id %s', req_id);
-    new_client(req_id, opt, function(err, info) {
-      if (err) {
-        res.statusCode = 500;
-        return res.end(err.message);
-      }
-
-      const url = schema + '://' + req_id + '.' + req.headers.host;
-      info.url = url;
-      res.json(info);
-    });
   });
 
-  app.get('/', function(req, res, next) {
-    res.redirect('https://localtunnel.github.io/www/');
-  });
-
-  // TODO(roman) remove after deploying redirect above
-  app.get('/assets/*', function(req, res, next) {
-    proxy.web(req, res);
-  });
-
-  // TODO(roman) remove after deploying redirect above
-  app.get('/favicon.ico', function(req, res, next) {
-    proxy.web(req, res);
-  });
-
-  app.get('/api/status', function(req, res, next) {
-    res.json({
-      tunnels: stats.tunnels
-    });
+  app.get('/api/status', function(_req, res) {
+    res.json({tunnels: stats.tunnels});
   });
 
   app.get('/:req_id', function(req, res, next) {
@@ -281,7 +265,7 @@ module.exports = function(opt) {
     // limit requested hostnames to 63 characters
     if (!/^[a-z0-9.]{4,63}$/.test(req_id)) {
       const err = new Error('Invalid subdomain. ' +
-              'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
+        'Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
       err.statusCode = 403;
       return next(err);
     }
@@ -298,7 +282,7 @@ module.exports = function(opt) {
     });
   });
 
-  app.use(function(err, req, res, next) {
+  app.use(function(err, _req, res, _next) {
     const status = err.statusCode || err.status || 500;
     res.status(status).json({
       message: err.message

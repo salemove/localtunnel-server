@@ -35,7 +35,7 @@ test('landing page', function(done) {
     });
 
     res.on('end', function() {
-      assert(body.indexOf('Redirecting to https://localtunnel.github.io/www/') > 0);
+      assert.deepEqual(JSON.parse(body), {hello: 'Hello, this is localtunnel server'});
       done();
     });
   });
