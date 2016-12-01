@@ -6,7 +6,7 @@ import http from 'http';
 
 const logError = new Debug('localtunnel:server:error');
 
-const Tunnel = function(opt, {endCallback}) {
+export default function createTunnel(opt, {endCallback, startCallback}) {
   let sockets = [];
   let waiting = [];
   const max_tcp_sockets = opt.maxTCPSockets || 10;
@@ -18,34 +18,32 @@ const Tunnel = function(opt, {endCallback}) {
   // track initial user connection setup
   let conn_timeout;
 
-  function start(cb) {
-    server.on('close', _cleanup);
-    server.on('connection', _handle_socket);
+  server.on('close', _cleanup);
+  server.on('connection', _handle_socket);
 
-    server.on('error', function(err) {
-      // where do these errors come from?
-      // other side creates a connection and then is killed?
-      if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
-        return;
-      }
+  server.on('error', function(err) {
+    // where do these errors come from?
+    // other side creates a connection and then is killed?
+    if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
+      return;
+    }
 
-      logError(err);
-    });
+    logError(err);
+  });
 
-    server.listen(function() {
-      const port = server.address().port;
-      debug('tcp server listening on port: %d', port);
+  server.listen(function() {
+    const port = server.address().port;
+    debug('tcp server listening on port: %d', port);
 
-      cb({port: port, max_conn_count: max_tcp_sockets});
-    });
+    startCallback({port: port, max_conn_count: max_tcp_sockets});
+  });
 
-    _maybe_destroy();
-  }
+  _maybe_destroy();
 
   function _maybe_destroy() {
     clearTimeout(conn_timeout);
     conn_timeout = setTimeout(function() {
-          // sometimes the server is already closed but the event has not fired?
+      // sometimes the server is already closed but the event has not fired?
       try {
         clearTimeout(conn_timeout);
         server.close();
@@ -261,7 +259,5 @@ const Tunnel = function(opt, {endCallback}) {
       });
   }
 
-  return {start, forwardHTTPRequest, forwardSocket};
-};
-
-export default Tunnel;
+  return {forwardHTTPRequest, forwardSocket};
+}

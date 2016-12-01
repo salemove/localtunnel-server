@@ -4,7 +4,7 @@ import http from 'http';
 import R from 'ramda';
 import generateId from 'uuid/v4';
 
-import Tunnel from './Tunnel';
+import createTunnel from './Tunnel';
 import TunnelKeeper from './TunnelKeeper';
 
 const debug = new Debug('localtunnel:server');
@@ -19,14 +19,10 @@ function findTunnel(configuredHost, req) {
 
 function newTunnel(id, maxTCPSockets, cb) {
   const opts = {id, maxTCPSockets};
-  const tunnel = new Tunnel(opts, {
-    endCallback: () => tunnels.remove(id)
-  });
-
-  tunnel.start(info => {
-    tunnels.add(id, tunnel);
-    cb(R.merge(info, {id}));
-  });
+  const endCallback = () => tunnels.remove(id);
+  const startCallback = info => cb(R.merge(info, {id}));
+  const tunnel = createTunnel(opts, {endCallback, startCallback});
+  tunnels.add(id, tunnel);
 }
 
 module.exports = function(opt) {
