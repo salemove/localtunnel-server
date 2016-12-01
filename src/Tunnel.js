@@ -6,11 +6,11 @@ import http from 'http';
 import Rx from 'rxjs/Rx';
 import R from 'ramda';
 
-const logError = new Debug('localtunnel:server:error');
-
 export default function createTunnel(id, {endCallback, startCallback}) {
-  let sockets = [];
   const debug = new Debug(`localtunnel:server:${id}`);
+  const logError = new Debug(`localtunnel:server:error:${id}`);
+
+  let sockets = [];
   const server = net.createServer();
 
   const socketsChange = new Rx.ReplaySubject(1);
@@ -69,6 +69,7 @@ export default function createTunnel(id, {endCallback, startCallback}) {
     // flag if we already finished before we get a socket
     // we can't respond to these requests
     on_finished(res, function(err) {
+      debug('already finished, destroying connection');
       finished = true;
       req.connection.destroy();
     });
@@ -94,6 +95,7 @@ export default function createTunnel(id, {endCallback, startCallback}) {
 
           client_res.pipe(res);
           on_finished(client_res, function(err) {
+            if (err) logError('client_res error', err);
             resolve();
           });
         });
@@ -103,6 +105,7 @@ export default function createTunnel(id, {endCallback, startCallback}) {
         // we can't really do more with the response here because headers
         // may already be sent
         client_req.on('error', err => {
+          logError('client request error', err);
           req.connection.destroy();
         });
 
