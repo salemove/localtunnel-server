@@ -91,9 +91,8 @@ function maybe_bounce(req, res, sock, head) {
             finished = true;
             req.connection.destroy();
         });
-    }
-    // not something we are expecting, need a sock or a res
-    else {
+    } else {
+        // not something we are expecting, need a sock or a res
         req.connection.destroy();
         return true;
     }
@@ -116,7 +115,7 @@ function maybe_bounce(req, res, sock, head) {
         // TODO(roman) we could instead have a timeout above
         // if no socket becomes available within some time,
         // we just tell the user no resource available to service request
-        else if (!socket) {
+        if (!socket) {
             if (res) {
                 res.statusCode = 504;
                 res.end();
