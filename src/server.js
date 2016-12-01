@@ -7,7 +7,7 @@ import http from 'http';
 import Promise from 'bluebird';
 import R from 'ramda';
 
-import LocalProxy from './LocalProxy';
+import Tunnel from './Tunnel';
 import generateId from 'uuid/v4';
 import BindingAgent from './BindingAgent';
 
@@ -29,8 +29,7 @@ proxy.on('proxyReq', function(proxyReq, req, res, options) {
   proxyReq.setHeader('host', 'localtunnel.github.io');
 });
 
-// id -> client http server
-const clients = Object.create(null);
+let tunnels = {};
 
 // proxy statistics
 const stats = {
@@ -51,14 +50,14 @@ function maybe_bounce(req, res, sock, head) {
     return false;
   }
 
-  let client = clients[subdomain];
+  let client = tunnels[subdomain];
 
   if (!client || subdomain.indexOf('.') !== -1) {
     subdomain = subdomain.split('.');
 
     for (let i = 0; i <= subdomain.length; i++) {
       const client_id = subdomain.slice(0, i).join('.');
-      client = clients[client_id];
+      client = tunnels[client_id];
 
       if (client) {
         break;
@@ -192,41 +191,27 @@ function maybe_bounce(req, res, sock, head) {
   return true;
 }
 
-// create a new tunnel with `id`
-function new_client(id, opt, cb) {
-  // can't ask for id already is use
-  // TODO check this new id again
-  if (clients[id]) {
-    id = generateId();
-  }
+function newTunnel(id, maxTCPSockets, cb) {
+  const opts = {id, maxTCPSockets};
+  const tunnel = new Tunnel(opts);
 
-  const popt = {
-    id: id,
-    max_tcp_sockets: opt.max_tcp_sockets
-  };
+  tunnels = R.assoc(id, tunnel, tunnels);
 
-  const client = new LocalProxy(popt);
-
-  // add to clients map immediately
-  // avoiding races with other clients requesting same id
-  clients[id] = client;
-
-  client.on('end', function() {
+  tunnel.on('end', function() {
     --stats.tunnels;
-    delete clients[id];
+    tunnels = R.dissoc(id, tunnels);
   });
 
-  client.start((err, info) => {
+  tunnel.start((err, info) => {
     if (err) {
-      delete clients[id];
+      tunnels = R.dissoc(id, tunnels);
       cb(err);
       return;
     }
 
     ++stats.tunnels;
 
-    info.id = id;
-    cb(err, info);
+    cb(err, R.merge(info, {id}));
   });
 }
 
@@ -242,7 +227,7 @@ module.exports = function(opt = {}) {
       const id = generateId();
       debug('making new client with id %s', id);
 
-      new_client(id, opt, function(err, info) {
+      newTunnel(id, opt.max_tcp_sockets, function(err, info) {
         if (err) {
           res.statusCode = 500;
           return res.end(err.message);

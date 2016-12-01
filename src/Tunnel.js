@@ -4,9 +4,9 @@ import Debug from 'debug';
 
 const logError = new Debug('localtunnel:server:error');
 
-const LocalProxy = function(opt) {
-  if (!(this instanceof LocalProxy)) {
-    return new LocalProxy(opt);
+const Tunnel = function(opt) {
+  if (!(this instanceof Tunnel)) {
+    return new Tunnel(opt);
   }
 
   const self = this;
@@ -16,7 +16,7 @@ const LocalProxy = function(opt) {
   self.id = opt.id;
 
   // default max is 10
-  self.max_tcp_sockets = opt.max_tcp_sockets || 10;
+  self.max_tcp_sockets = opt.maxTCPSockets || 10;
 
   // new tcp server to service requests for this client
   self.server = net.createServer();
@@ -27,9 +27,9 @@ const LocalProxy = function(opt) {
   self.debug = new Debug(`localtunnel:server:${self.id}`);
 };
 
-LocalProxy.prototype.__proto__ = EventEmitter.prototype;
+Tunnel.prototype.__proto__ = EventEmitter.prototype;
 
-LocalProxy.prototype.start = function(cb) {
+Tunnel.prototype.start = function(cb) {
   const self = this;
   const server = self.server;
 
@@ -67,7 +67,7 @@ LocalProxy.prototype.start = function(cb) {
   self._maybe_destroy();
 };
 
-LocalProxy.prototype._maybe_destroy = function() {
+Tunnel.prototype._maybe_destroy = function() {
   const self = this;
 
   clearTimeout(self.conn_timeout);
@@ -83,7 +83,7 @@ LocalProxy.prototype._maybe_destroy = function() {
 };
 
 // new socket connection from client for tunneling requests to client
-LocalProxy.prototype._handle_socket = function(socket) {
+Tunnel.prototype._handle_socket = function(socket) {
   const self = this;
 
   // no more socket connections allowed
@@ -129,7 +129,7 @@ LocalProxy.prototype._handle_socket = function(socket) {
   self._process_waiting();
 };
 
-LocalProxy.prototype._process_waiting = function() {
+Tunnel.prototype._process_waiting = function() {
   const self = this;
   const wait_cb = self.waiting.shift();
   if (wait_cb) {
@@ -138,7 +138,7 @@ LocalProxy.prototype._process_waiting = function() {
   }
 };
 
-LocalProxy.prototype._cleanup = function() {
+Tunnel.prototype._cleanup = function() {
   const self = this;
   self.debug('closed tcp socket for client(%s)', self.id);
 
@@ -150,7 +150,7 @@ LocalProxy.prototype._cleanup = function() {
   self.emit('end');
 };
 
-LocalProxy.prototype.next_socket = function(handler) {
+Tunnel.prototype.next_socket = function(handler) {
   const self = this;
 
   // socket is a tcp connection back to the user hosting the site
@@ -182,4 +182,4 @@ LocalProxy.prototype.next_socket = function(handler) {
     });
 };
 
-export default LocalProxy;
+export default Tunnel;
