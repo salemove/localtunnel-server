@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-require('localenv');
 require('babel-register');
 
 const debug = require('debug')('localtunnel');
