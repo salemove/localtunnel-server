@@ -44,7 +44,7 @@ LocalProxy.prototype.start = function(cb) {
     server.on('error', function(err) {
         // where do these errors come from?
         // other side creates a connection and then is killed?
-        if (err.code == 'ECONNRESET' || err.code == 'ETIMEDOUT') {
+        if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
             return;
         }
 
