@@ -31,9 +31,7 @@ proxy.on('proxyReq', function(proxyReq, req, res, options) {
 
 let tunnels = {};
 
-// handle proxying a request to a client
-// will wait for a tunnel socket to become available
-function maybe_bounce(req, res, sock, head) {
+function maybeProxyRequestToClient(req, res, sock, head) {
   // without a hostname, we won't know who the request is for
   const hostname = req.headers.host;
   if (!hostname) {
@@ -239,7 +237,7 @@ module.exports = function(opt = {}) {
     debug('request %s', req.url);
 
     const configuredHost = opt.host;
-    if (configuredHost !== req.headers.host && maybe_bounce(req, res, null, null))
+    if (configuredHost !== req.headers.host && maybeProxyRequestToClient(req, res, null, null))
       return;
 
     app(req, res);
@@ -248,7 +246,7 @@ module.exports = function(opt = {}) {
   server.on('upgrade', function(req, socket, head) {
     debug('upgrade %s', req.url);
 
-    if (maybe_bounce(req, null, socket, head))
+    if (maybeProxyRequestToClient(req, null, socket, head))
       return;
 
     socket.destroy();
