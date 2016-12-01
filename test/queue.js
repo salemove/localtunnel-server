@@ -6,7 +6,8 @@ const localtunnel = require('localtunnel');
 suite('queue');
 
 const localtunnel_server = require('../src/server')({
-  max_tcp_sockets: 1
+  max_tcp_sockets: 1,
+  host: 'localhost.tld'
 });
 
 let server;

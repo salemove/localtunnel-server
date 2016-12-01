@@ -4,7 +4,8 @@ const assert = require('assert');
 const localtunnel = require('localtunnel');
 
 const localtunnel_server = require('../src/server')({
-  max_tcp_sockets: 2
+  max_tcp_sockets: 2,
+  host: 'localhost.tld'
 });
 
 let lt_server_port;

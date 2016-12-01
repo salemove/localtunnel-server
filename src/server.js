@@ -1,5 +1,4 @@
 import express from 'express';
-import tldjs from 'tldjs';
 import on_finished from 'on-finished';
 import Debug from 'debug';
 import http from 'http';
@@ -9,44 +8,26 @@ import R from 'ramda';
 import Tunnel from './Tunnel';
 import generateId from 'uuid/v4';
 import BindingAgent from './BindingAgent';
+import TunnelKeeper from './TunnelKeeper';
 
 const debug = new Debug('localtunnel:server');
 
-let tunnels = {};
+const tunnels = new TunnelKeeper();
 
-function maybeProxyRequestToClient(req, res, sock, head) {
-  // without a hostname, we won't know who the request is for
+function maybeProxyRequestToClient(configuredHost, req, res, sock, head) {
   const hostname = req.headers.host;
-  if (!hostname) {
-    return false;
-  }
+  if (!hostname) return false;
 
-  let subdomain = tldjs.getSubdomain(hostname);
-  if (!subdomain) {
-    return false;
-  }
+  const configuredHostIndex = hostname.lastIndexOf(configuredHost);
+  if (configuredHostIndex === -1) return false;
 
-  let client = tunnels[subdomain];
+  const tunnelId = hostname.slice(0, configuredHostIndex - 1);
+  const client = tunnels.find(tunnelId);
 
-  if (!client || subdomain.indexOf('.') !== -1) {
-    subdomain = subdomain.split('.');
-
-    for (let i = 0; i <= subdomain.length; i++) {
-      const client_id = subdomain.slice(0, i).join('.');
-      client = tunnels[client_id];
-
-      if (client) {
-        break;
-      }
-    }
-  }
-
-  // no such subdomain
-  // we use 502 error to the client to signify we can't service the request
   if (!client) {
     if (res) {
       res.statusCode = 502;
-      res.end(`no active client for '${subdomain}'`);
+      res.end(`no active client for '${tunnelId}'`);
       req.connection.destroy();
     } else if (sock) {
       sock.destroy();
@@ -170,28 +151,27 @@ function maybeProxyRequestToClient(req, res, sock, head) {
 function newTunnel(id, maxTCPSockets, cb) {
   const opts = {id, maxTCPSockets};
   const tunnel = new Tunnel(opts, {
-    endCallback: () => {
-      tunnels = R.dissoc(id, tunnels);
-    }
+    endCallback: () => tunnels.remove(id)
   });
 
   tunnel.start((err, info) => {
     if (err) {
-      tunnels = R.dissoc(id, tunnels);
+      tunnels.remove(id);
       cb(err);
       return;
     }
 
-    tunnels = R.assoc(id, tunnel, tunnels);
+    tunnels.add(id, tunnel);
 
     cb(err, R.merge(info, {id}));
   });
 }
 
-module.exports = function(opt = {}) {
+module.exports = function(opt) {
   const schema = opt.secure ? 'https' : 'http';
   const app = express();
   const server = http.createServer();
+  const configuredHost = opt.host;
 
   app.get('/', function(req, res) {
     if (req.query.new === undefined) {
@@ -213,14 +193,13 @@ module.exports = function(opt = {}) {
   });
 
   app.get('/api/status', function(_req, res) {
-    res.json({tunnels: R.keys(tunnels).length});
+    res.json({tunnels: tunnels.count()});
   });
 
   server.on('request', function(req, res) {
     debug('request %s', req.url);
 
-    const configuredHost = opt.host;
-    if (configuredHost !== req.headers.host && maybeProxyRequestToClient(req, res, null, null))
+    if (configuredHost !== req.headers.host && maybeProxyRequestToClient(configuredHost, req, res, null, null))
       return;
 
     app(req, res);
@@ -229,7 +208,7 @@ module.exports = function(opt = {}) {
   server.on('upgrade', function(req, socket, head) {
     debug('upgrade %s', req.url);
 
-    if (maybeProxyRequestToClient(req, null, socket, head))
+    if (maybeProxyRequestToClient(configuredHost, req, null, socket, head))
       return;
 
     socket.destroy();

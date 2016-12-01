@@ -5,7 +5,8 @@ const WebSocket = require('ws');
 const WebSocketServer = require('ws').Server;
 
 const localtunnel_server = require('../src/server')({
-  max_tcp_sockets: 2
+  max_tcp_sockets: 2,
+  host: 'localhost.tld'
 });
 
 let lt_server_port;

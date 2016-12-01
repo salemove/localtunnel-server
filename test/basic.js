@@ -3,7 +3,9 @@ const url = require('url');
 const assert = require('assert');
 const localtunnel = require('localtunnel');
 
-const localtunnel_server = require('../src/server')();
+const localtunnel_server = require('../src/server')({
+  host: 'localhost.tld'
+});
 
 suite('basic');
 
