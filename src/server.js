@@ -29,16 +29,15 @@ module.exports = function(opt) {
   const schema = opt.secure ? 'https' : 'http';
   const app = express();
   app.use(new DDDoS({
+    checkInterval: 5000,
     rules: [{
-      // Allow creating up to 2 tunnels per 10 seconds
+      // Allow creating up to 2 tunnels per 5 seconds
       regexp: '^/.*new.*',
-      maxWeight: 2,
-      checkInterval: 10000
+      maxWeight: 2
     }, {
-      // Allow up to 20 other requests per second
+      // Allow up to 100 other requests per 5 seconds
       regexp: '.*',
-      maxWeight: 20,
-      checkInterval: 1000
+      maxWeight: 100
     }]
   }).express('ip', 'url'));
   const server = http.createServer();
