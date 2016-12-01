@@ -17,11 +17,10 @@ function findTunnel(configuredHost, req) {
   return tunnels.find(tunnelId);
 }
 
-function newTunnel(id, maxTCPSockets, cb) {
-  const opts = {id, maxTCPSockets};
+function newTunnel(id, cb) {
   const endCallback = () => tunnels.remove(id);
   const startCallback = info => cb(R.merge(info, {id}));
-  const tunnel = createTunnel(opts, {endCallback, startCallback});
+  const tunnel = createTunnel(id, {endCallback, startCallback});
   tunnels.add(id, tunnel);
 }
 
@@ -46,7 +45,7 @@ module.exports = function(opt) {
       const id = generateId();
       debug('making new tunnel with id %s', id);
 
-      newTunnel(id, opt.max_tcp_sockets, function(info) {
+      newTunnel(id, function(info) {
         const url = schema + '://' + id + '.' + req.headers.host;
         res.json(R.merge(info, {url: url}));
       });

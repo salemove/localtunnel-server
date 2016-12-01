@@ -6,11 +6,10 @@ import http from 'http';
 
 const logError = new Debug('localtunnel:server:error');
 
-export default function createTunnel(opt, {endCallback, startCallback}) {
+export default function createTunnel(id, {endCallback, startCallback}) {
   let sockets = [];
   let waiting = [];
-  const max_tcp_sockets = opt.maxTCPSockets || 10;
-  const debug = new Debug(`localtunnel:server:${opt.id}`);
+  const debug = new Debug(`localtunnel:server:${id}`);
 
   // new tcp server to service requests for this client
   const server = net.createServer();
@@ -35,7 +34,8 @@ export default function createTunnel(opt, {endCallback, startCallback}) {
     const port = server.address().port;
     debug('tcp server listening on port: %d', port);
 
-    startCallback({port: port, max_conn_count: max_tcp_sockets});
+    // Adding max_conn_count as this is required by the client
+    startCallback({port: port, max_conn_count: 10});
   });
 
   _maybe_destroy();
@@ -55,11 +55,6 @@ export default function createTunnel(opt, {endCallback, startCallback}) {
 
   // new socket connection from client for tunneling requests to client
   function _handle_socket(socket) {
-    // no more socket connections allowed
-    if (sockets.length >= max_tcp_sockets) {
-      return socket.end();
-    }
-
     debug('new connection from: %s:%s', socket.address().address, socket.address().port);
 
     // a single connection is enough to keep client id slot open

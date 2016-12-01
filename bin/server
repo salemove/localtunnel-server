@@ -19,10 +19,6 @@ const argv = optimist
   .options('host', {
     describe: 'listen on this host for outside requests'
   })
-  .options('max-sockets', {
-    default: 10,
-    describe: 'maximum number of tcp sockets each client is allowed to establish at one time (the tunnels)'
-  })
   .argv;
 
 if (argv.help) {
@@ -31,7 +27,6 @@ if (argv.help) {
 }
 
 const server = require('../src/server')({
-  max_tcp_sockets: argv['max-sockets'],
   secure: argv.secure,
   port: argv.port,
   host: argv.host
