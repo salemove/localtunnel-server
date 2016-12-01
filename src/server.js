@@ -63,7 +63,7 @@ module.exports = function(opt) {
       const tunnel = findTunnel(configuredHost, req);
 
       if (tunnel) {
-        tunnel.forwardHTTPRequest(req, res);
+        tunnel.forwardRequest(req, res);
       } else {
         res.statusCode = 502;
         res.end(`No tunnel for ${req.headers.host}`);
@@ -71,21 +71,6 @@ module.exports = function(opt) {
       }
     } else {
       app(req, res);
-    }
-  });
-
-  server.on('upgrade', function(req, socket, head) {
-    debug('upgrade %s', req.url);
-
-    if (useProxy(req)) {
-      const tunnel = findTunnel(configuredHost, req);
-
-      if (tunnel)
-        tunnel.forwardSocket(req, socket, head);
-      else
-        socket.destroy();
-    } else {
-      socket.destroy();
     }
   });
 

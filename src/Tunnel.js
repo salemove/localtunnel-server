@@ -108,7 +108,7 @@ export default function createTunnel(id, {endCallback, startCallback}) {
     socketsChange.next(sockets);
   }
 
-  function forwardHTTPRequest(req, res) {
+  function forwardRequest(req, res) {
     debug('processing http request');
 
     let finished = false;
@@ -157,38 +157,5 @@ export default function createTunnel(id, {endCallback, startCallback}) {
     });
   }
 
-  function forwardSocket(req, sock, head) {
-    debug('processing socket request');
-
-    let finished = false;
-    sock.once('end', () => {
-      finished = true;
-    });
-
-    requests.next(socket => {
-      // the request already finished or tunnel disconnected
-      if (finished)
-        return Promise.resolve({});
-
-      // websocket requests are special in that we simply re-create the header info
-      // and directly pipe the socket data
-      // avoids having to rebuild the request and handle upgrades via the http client
-      const arr = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
-      for (let i = 0; i < (req.rawHeaders.length - 1); i += 2) {
-        arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
-      }
-
-      arr.push('');
-      arr.push('');
-
-      socket.pipe(sock).pipe(socket);
-      socket.write(arr.join('\r\n'));
-
-      return new Promise(resolve => {
-        socket.once('end', resolve);
-      });
-    });
-  }
-
-  return {forwardHTTPRequest, forwardSocket};
+  return {forwardRequest};
 }
