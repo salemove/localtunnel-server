@@ -8,8 +8,8 @@ import http from 'http';
 import Promise from 'bluebird';
 
 import Proxy from './proxy';
-import rand_id from './lib/rand_id';
-import BindingAgent from './lib/BindingAgent';
+import rand_id from '../lib/rand_id';
+import BindingAgent from '../lib/BindingAgent';
 
 const debug = Debug('localtunnel:server');
 

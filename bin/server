@@ -31,7 +31,7 @@ if (argv.help) {
     process.exit();
 }
 
-const server = require('../server')({
+const server = require('../src/server')({
     max_tcp_sockets: argv['max-sockets'],
     secure: argv.secure,
     port: argv.port,

@@ -3,7 +3,7 @@ var url = require('url');
 var assert = require('assert');
 var localtunnel = require('localtunnel');
 
-var localtunnel_server = require('../server')({
+var localtunnel_server = require('../src/server')({
     max_tcp_sockets: 2
 });
 
