@@ -4,180 +4,180 @@ import log from 'bookrc';
 import Debug from 'debug';
 
 const LocalProxy = function(opt) {
-    if (!(this instanceof LocalProxy)) {
-        return new LocalProxy(opt);
-    }
+  if (!(this instanceof LocalProxy)) {
+    return new LocalProxy(opt);
+  }
 
-    const self = this;
+  const self = this;
 
-    self.sockets = [];
-    self.waiting = [];
-    self.id = opt.id;
+  self.sockets = [];
+  self.waiting = [];
+  self.id = opt.id;
 
-    // default max is 10
-    self.max_tcp_sockets = opt.max_tcp_sockets || 10;
+  // default max is 10
+  self.max_tcp_sockets = opt.max_tcp_sockets || 10;
 
-    // new tcp server to service requests for this client
-    self.server = net.createServer();
+  // new tcp server to service requests for this client
+  self.server = net.createServer();
 
-    // track initial user connection setup
-    self.conn_timeout = undefined;
+  // track initial user connection setup
+  self.conn_timeout = undefined;
 
-    self.debug = new Debug(`localtunnel:server:${self.id}`);
+  self.debug = new Debug(`localtunnel:server:${self.id}`);
 };
 
 LocalProxy.prototype.__proto__ = EventEmitter.prototype;
 
 LocalProxy.prototype.start = function(cb) {
-    const self = this;
-    const server = self.server;
+  const self = this;
+  const server = self.server;
 
-    if (self.started) {
-        cb(new Error('already started'));
-        return;
+  if (self.started) {
+    cb(new Error('already started'));
+    return;
+  }
+  self.started = true;
+
+  server.on('close', self._cleanup.bind(self));
+  server.on('connection', self._handle_socket.bind(self));
+
+  server.on('error', function(err) {
+    // where do these errors come from?
+    // other side creates a connection and then is killed?
+    if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
+      return;
     }
-    self.started = true;
 
-    server.on('close', self._cleanup.bind(self));
-    server.on('connection', self._handle_socket.bind(self));
+    log.error(err);
+  });
 
-    server.on('error', function(err) {
-        // where do these errors come from?
-        // other side creates a connection and then is killed?
-        if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
-            return;
-        }
+  server.listen(function() {
+    const port = server.address().port;
+    self.debug('tcp server listening on port: %d', port);
 
-        log.error(err);
+    cb(null, {
+      // port for lt client tcp connections
+      port: port,
+      // maximum number of tcp connections allowed by lt client
+      max_conn_count: self.max_tcp_sockets
     });
+  });
 
-    server.listen(function() {
-        const port = server.address().port;
-        self.debug('tcp server listening on port: %d', port);
-
-        cb(null, {
-            // port for lt client tcp connections
-            port: port,
-            // maximum number of tcp connections allowed by lt client
-            max_conn_count: self.max_tcp_sockets
-        });
-    });
-
-    self._maybe_destroy();
+  self._maybe_destroy();
 };
 
 LocalProxy.prototype._maybe_destroy = function() {
-    const self = this;
+  const self = this;
 
-    clearTimeout(self.conn_timeout);
-    self.conn_timeout = setTimeout(function() {
+  clearTimeout(self.conn_timeout);
+  self.conn_timeout = setTimeout(function() {
         // sometimes the server is already closed but the event has not fired?
-        try {
-            clearTimeout(self.conn_timeout);
-            self.server.close();
-        } catch (err) {
-            self._cleanup();
-        }
-    }, 5000);
+    try {
+      clearTimeout(self.conn_timeout);
+      self.server.close();
+    } catch (err) {
+      self._cleanup();
+    }
+  }, 5000);
 };
 
 // new socket connection from client for tunneling requests to client
 LocalProxy.prototype._handle_socket = function(socket) {
-    const self = this;
+  const self = this;
 
-    // no more socket connections allowed
-    if (self.sockets.length >= self.max_tcp_sockets) {
-        return socket.end();
+  // no more socket connections allowed
+  if (self.sockets.length >= self.max_tcp_sockets) {
+    return socket.end();
+  }
+
+  self.debug('new connection from: %s:%s', socket.address().address, socket.address().port);
+
+  // a single connection is enough to keep client id slot open
+  clearTimeout(self.conn_timeout);
+
+  socket.once('close', function(had_error) {
+    self.debug('closed socket (error: %s)', had_error);
+
+    // what if socket was servicing a request at this time?
+    // then it will be put back in available after right?
+    // we need a list of sockets servicing requests?
+
+    // remove this socket
+    const idx = self.sockets.indexOf(socket);
+    if (idx >= 0) {
+      self.sockets.splice(idx, 1);
     }
 
-    self.debug('new connection from: %s:%s', socket.address().address, socket.address().port);
+    // need to track total sockets, not just active available
+    self.debug('remaining client sockets: %s', self.sockets.length);
 
-    // a single connection is enough to keep client id slot open
-    clearTimeout(self.conn_timeout);
+    // no more sockets for this ident
+    if (self.sockets.length === 0) {
+      self.debug('all sockets disconnected');
+      self._maybe_destroy();
+    }
+  });
 
-    socket.once('close', function(had_error) {
-        self.debug('closed socket (error: %s)', had_error);
+  // close will be emitted after this
+  socket.on('error', function(err) {
+    // we don't log here to avoid logging crap for misbehaving clients
+    socket.destroy();
+  });
 
-        // what if socket was servicing a request at this time?
-        // then it will be put back in available after right?
-        // we need a list of sockets servicing requests?
-
-        // remove this socket
-        const idx = self.sockets.indexOf(socket);
-        if (idx >= 0) {
-            self.sockets.splice(idx, 1);
-        }
-
-        // need to track total sockets, not just active available
-        self.debug('remaining client sockets: %s', self.sockets.length);
-
-        // no more sockets for this ident
-        if (self.sockets.length === 0) {
-            self.debug('all sockets disconnected');
-            self._maybe_destroy();
-        }
-    });
-
-    // close will be emitted after this
-    socket.on('error', function(err) {
-        // we don't log here to avoid logging crap for misbehaving clients
-        socket.destroy();
-    });
-
-    self.sockets.push(socket);
-    self._process_waiting();
+  self.sockets.push(socket);
+  self._process_waiting();
 };
 
 LocalProxy.prototype._process_waiting = function() {
-    const self = this;
-    const wait_cb = self.waiting.shift();
-    if (wait_cb) {
-        self.debug('handling queued request');
-        self.next_socket(wait_cb);
-    }
+  const self = this;
+  const wait_cb = self.waiting.shift();
+  if (wait_cb) {
+    self.debug('handling queued request');
+    self.next_socket(wait_cb);
+  }
 };
 
 LocalProxy.prototype._cleanup = function() {
-    const self = this;
-    self.debug('closed tcp socket for client(%s)', self.id);
+  const self = this;
+  self.debug('closed tcp socket for client(%s)', self.id);
 
-    clearTimeout(self.conn_timeout);
+  clearTimeout(self.conn_timeout);
 
-    // clear waiting by ending responses, (requests?)
-    self.waiting.forEach(handler => handler(null));
+  // clear waiting by ending responses, (requests?)
+  self.waiting.forEach(handler => handler(null));
 
-    self.emit('end');
+  self.emit('end');
 };
 
 LocalProxy.prototype.next_socket = function(handler) {
-    const self = this;
+  const self = this;
 
-    // socket is a tcp connection back to the user hosting the site
-    const sock = self.sockets.shift();
+  // socket is a tcp connection back to the user hosting the site
+  const sock = self.sockets.shift();
 
-    if (!sock) {
-        self.debug('no more client, queue callback');
-        self.waiting.push(handler);
-        return;
-    }
+  if (!sock) {
+    self.debug('no more client, queue callback');
+    self.waiting.push(handler);
+    return;
+  }
 
-    self.debug('processing request');
-    handler(sock)
+  self.debug('processing request');
+  handler(sock)
     .catch(err => {
-        log.error(err);
+      log.error(err);
     })
     .finally(() => {
-        if (!sock.destroyed) {
-            self.debug('retuning socket');
-            self.sockets.push(sock);
-        }
+      if (!sock.destroyed) {
+        self.debug('retuning socket');
+        self.sockets.push(sock);
+      }
 
-        // no sockets left to process waiting requests
-        if (self.sockets.length === 0) {
-            return;
-        }
+      // no sockets left to process waiting requests
+      if (self.sockets.length === 0) {
+        return;
+      }
 
-        self._process_waiting();
+      self._process_waiting();
     });
 };
 

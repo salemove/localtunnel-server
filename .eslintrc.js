@@ -24,7 +24,6 @@ module.exports = {
     "fp/no-delete": "off",
     "fp/no-loops": "off",
     "fp/no-events": "off",
-    "indent": "off",
     "no-var": "off",
     "camelcase": "off",
     "no-warning-comments": "off",
