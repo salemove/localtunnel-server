@@ -7,7 +7,7 @@ var localtunnel_server = require('../src/server')();
 
 suite('basic');
 
-var lt_server_port
+var lt_server_port;
 
 before('set up localtunnel server', function(done) {
     var server = localtunnel_server.listen(function() {
@@ -24,7 +24,7 @@ test('landing page', function(done) {
             host: 'example.com'
         },
         path: '/'
-    }
+    };
 
     var req = http.request(opt, function(res) {
         res.setEncoding('utf8');
@@ -59,7 +59,7 @@ before('set up local http server', function(done) {
 
 before('set up localtunnel client', function(done) {
     var opt = {
-        host: 'http://localhost:' + lt_server_port,
+        host: 'http://localhost:' + lt_server_port
     };
 
     localtunnel(test._fake_port, opt, function(err, tunnel) {
@@ -82,7 +82,7 @@ test('query localtunnel server w/ ident', function(done) {
             host: hostname + '.tld'
         },
         path: '/'
-    }
+    };
 
     var req = http.request(opt, function(res) {
         res.setEncoding('utf8');

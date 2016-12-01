@@ -7,7 +7,7 @@ var localtunnel_server = require('../src/server')({
     max_tcp_sockets: 2
 });
 
-var lt_server_port
+var lt_server_port;
 
 suite('simple');
 
@@ -31,7 +31,7 @@ test('set up local http server', function(done) {
 
 test('set up localtunnel client', function(done) {
     var opt = {
-        host: 'http://localhost:' + lt_server_port,
+        host: 'http://localhost:' + lt_server_port
     };
 
     localtunnel(test._fake_port, opt, function(err, tunnel) {

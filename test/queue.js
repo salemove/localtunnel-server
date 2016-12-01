@@ -39,7 +39,7 @@ before('set up local http server', function(done) {
 
 before('set up localtunnel client', function(done) {
     var opt = {
-        host: 'http://localhost:' + lt_server_port,
+        host: 'http://localhost:' + lt_server_port
     };
 
     localtunnel(test._fake_port, opt, function(err, tunnel) {
@@ -64,7 +64,7 @@ test('query localtunnel server w/ ident', function(done) {
             host: hostname + '.tld'
         },
         path: '/'
-    }
+    };
 
     var num_requests = 2;
     var responses = 0;
@@ -92,7 +92,7 @@ test('query localtunnel server w/ ident', function(done) {
         });
     }
 
-    for (var i=0 ; i<num_requests ; ++i) {
+    for (var i = 0; i < num_requests; ++i) {
         make_req();
     }
 });

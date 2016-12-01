@@ -77,12 +77,11 @@ Proxy.prototype._maybe_destroy = function() {
         try {
             clearTimeout(self.conn_timeout);
             self.server.close();
-        }
-        catch (err) {
+        } catch (err) {
             self._cleanup();
         }
     }, 5000);
-}
+};
 
 // new socket connection from client for tunneling requests to client
 Proxy.prototype._handle_socket = function(socket) {
@@ -166,7 +165,7 @@ Proxy.prototype.next_socket = function(handler) {
 
     self.debug('processing request');
     handler(sock)
-    .catch((err) => {
+    .catch(err => {
         log.error(err);
     })
     .finally(() => {

@@ -9,7 +9,7 @@ var localtunnel_server = require('../src/server')({
     max_tcp_sockets: 2
 });
 
-var lt_server_port
+var lt_server_port;
 
 suite('websocket');
 
@@ -21,7 +21,7 @@ before('set up localtunnel server', function(done) {
 });
 
 before('set up local websocket server', function(done) {
-    var wss = new WebSocketServer({ port: 0 }, function() {
+    var wss = new WebSocketServer({port: 0}, function() {
         test._fake_port = wss._server.address().port;
         done();
     });
@@ -43,7 +43,7 @@ before('set up local websocket server', function(done) {
 
 before('set up localtunnel client', function(done) {
     var opt = {
-        host: 'http://localhost:' + lt_server_port,
+        host: 'http://localhost:' + lt_server_port
     };
 
     localtunnel(test._fake_port, opt, function(err, tunnel) {

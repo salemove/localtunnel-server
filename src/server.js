@@ -54,21 +54,17 @@ function maybe_bounce(req, res, sock, head) {
 
     let client = clients[subdomain];
 
-    if(!client || subdomain.indexOf('.') !== -1) {
-
+    if (!client || subdomain.indexOf('.') !== -1) {
         subdomain = subdomain.split('.');
 
-        for(var i = 0; i <= subdomain.length; i++) {
-
-            var  client_id = subdomain.slice(0, i).join('.');
+        for (var i = 0; i <= subdomain.length; i++) {
+            var client_id = subdomain.slice(0, i).join('.');
             client = clients[client_id];
 
-            if(client) {
+            if (client) {
                 break;
             }
-
         }
-
     }
 
     // no such subdomain
@@ -78,8 +74,7 @@ function maybe_bounce(req, res, sock, head) {
             res.statusCode = 502;
             res.end(`no active client for '${subdomain}'`);
             req.connection.destroy();
-        }
-        else if (sock) {
+        } else if (sock) {
             sock.destroy();
         }
 
@@ -91,8 +86,7 @@ function maybe_bounce(req, res, sock, head) {
         sock.once('end', function() {
             finished = true;
         });
-    }
-    else if (res) {
+    } else if (res) {
         // flag if we already finished before we get a socket
         // we can't respond to these requests
         on_finished(res, function(err) {
@@ -109,7 +103,7 @@ function maybe_bounce(req, res, sock, head) {
     // TODO add a timeout, if we run out of sockets, then just 502
 
     // get client port
-    client.next_socket(async (socket) => {
+    client.next_socket(async socket => {
         // the request already finished or client disconnected
         if (finished) {
             return;
@@ -143,8 +137,8 @@ function maybe_bounce(req, res, sock, head) {
         // avoids having to rebuild the request and handle upgrades via the http client
         if (res === null) {
             const arr = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
-            for (let i=0 ; i < (req.rawHeaders.length-1) ; i+=2) {
-                arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i+1]}`);
+            for (let i = 0; i < (req.rawHeaders.length - 1); i += 2) {
+                arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
             }
 
             arr.push('');
@@ -153,7 +147,7 @@ function maybe_bounce(req, res, sock, head) {
             socket.pipe(sock).pipe(socket);
             socket.write(arr.join('\r\n'));
 
-            await new Promise((resolve) => {
+            await new Promise(resolve => {
                 socket.once('end', resolve);
             });
 
@@ -173,7 +167,7 @@ function maybe_bounce(req, res, sock, head) {
             headers: req.headers
         };
 
-        await new Promise((resolve) => {
+        await new Promise(resolve => {
             // what if error making this request?
             const client_req = http.request(opt, function(client_res) {
                 // write response code and headers
@@ -189,7 +183,7 @@ function maybe_bounce(req, res, sock, head) {
             // so we just end the req and move on
             // we can't really do more with the response here because headers
             // may already be sent
-            client_req.on('error', (err) => {
+            client_req.on('error', err => {
                 req.connection.destroy();
             });
 
@@ -246,7 +240,7 @@ module.exports = function(opt) {
     const app = express();
 
     app.get('/', function(req, res, next) {
-        if (req.query['new'] === undefined) {
+        if (req.query.new === undefined) {
             return next();
         }
 
@@ -280,7 +274,7 @@ module.exports = function(opt) {
 
     app.get('/api/status', function(req, res, next) {
         res.json({
-            tunnels: stats.tunnels,
+            tunnels: stats.tunnels
         });
     });
 
@@ -288,7 +282,7 @@ module.exports = function(opt) {
         const req_id = req.params.req_id;
 
         // limit requested hostnames to 63 characters
-        if (! /^[a-z0-9\.]{4,63}$/.test(req_id)) {
+        if (!/^[a-z0-9\.]{4,63}$/.test(req_id)) {
             const err = new Error('Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
             err.statusCode = 403;
             return next(err);
@@ -304,7 +298,6 @@ module.exports = function(opt) {
             info.url = url;
             res.json(info);
         });
-
     });
 
     app.use(function(err, req, res, next) {
@@ -321,7 +314,7 @@ module.exports = function(opt) {
         var configuredHost = opt.host;
         if (configuredHost !== req.headers.host && maybe_bounce(req, res, null, null)) {
             return;
-        };
+        }
 
         app(req, res);
     });
@@ -329,7 +322,7 @@ module.exports = function(opt) {
     server.on('upgrade', function(req, socket, head) {
         if (maybe_bounce(req, null, socket, head)) {
             return;
-        };
+        }
 
         socket.destroy();
     });
