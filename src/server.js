@@ -2,7 +2,6 @@ import express from 'express';
 import tldjs from 'tldjs';
 import on_finished from 'on-finished';
 import Debug from 'debug';
-import http_proxy from 'http-proxy';
 import http from 'http';
 import Promise from 'bluebird';
 import R from 'ramda';
@@ -12,22 +11,6 @@ import generateId from 'uuid/v4';
 import BindingAgent from './BindingAgent';
 
 const debug = new Debug('localtunnel:server');
-const logError = new Debug('localtunnel:server:error');
-
-const proxy = http_proxy.createProxyServer({
-  target: 'http://localtunnel.github.io'
-});
-
-proxy.on('error', function(err) {
-  logError(err);
-});
-
-proxy.on('proxyReq', function(proxyReq, req, res, options) {
-    // rewrite the request so it hits the correct url on github
-    // also make sure host header is what we expect
-  proxyReq.path = '/www' + proxyReq.path;
-  proxyReq.setHeader('host', 'localtunnel.github.io');
-});
 
 let tunnels = {};
 
