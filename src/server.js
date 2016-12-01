@@ -11,7 +11,7 @@ import LocalProxy from './local_proxy';
 import rand_id from '../lib/rand_id';
 import BindingAgent from '../lib/BindingAgent';
 
-const debug = Debug('localtunnel:server');
+const debug = new Debug('localtunnel:server');
 
 const proxy = http_proxy.createProxyServer({
     target: 'http://localtunnel.github.io'
@@ -204,7 +204,7 @@ function new_client(id, opt, cb) {
         max_tcp_sockets: opt.max_tcp_sockets
     };
 
-    const client = LocalProxy(popt);
+    const client = new LocalProxy(popt);
 
     // add to clients map immediately
     // avoiding races with other clients requesting same id

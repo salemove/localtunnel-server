@@ -23,7 +23,7 @@ const LocalProxy = function(opt) {
     // track initial user connection setup
     self.conn_timeout = undefined;
 
-    self.debug = Debug(`localtunnel:server:${self.id}`);
+    self.debug = new Debug(`localtunnel:server:${self.id}`);
 };
 
 LocalProxy.prototype.__proto__ = EventEmitter.prototype;
