@@ -28,8 +28,6 @@ proxy.on('proxyReq', function(proxyReq, req, res, options) {
     proxyReq.setHeader('host', 'localtunnel.github.io');
 });
 
-const PRODUCTION = process.env.NODE_ENV === 'production';
-
 // id -> client http server
 const clients = Object.create(null);
 

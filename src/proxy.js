@@ -3,8 +3,6 @@ import EventEmitter from 'events';
 import log from 'bookrc';
 import Debug from 'debug';
 
-const debug = Debug('localtunnel:server');
-
 const Proxy = function(opt) {
     if (!(this instanceof Proxy)) {
         return new Proxy(opt);
@@ -181,10 +179,6 @@ Proxy.prototype.next_socket = function(handler) {
 
         self._process_waiting();
     });
-};
-
-Proxy.prototype._done = function() {
-    const self = this;
 };
 
 export default Proxy;
