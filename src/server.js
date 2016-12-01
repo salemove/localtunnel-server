@@ -6,7 +6,7 @@ import http_proxy from 'http-proxy';
 import http from 'http';
 import Promise from 'bluebird';
 
-import LocalProxy from './local_proxy';
+import LocalProxy from './LocalProxy';
 import generateId from 'uuid/v4';
 import BindingAgent from './BindingAgent';
 
