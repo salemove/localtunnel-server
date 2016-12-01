@@ -1,6 +1,6 @@
 import net from 'net';
 import Debug from 'debug';
-import on_finished from 'on-finished';
+import {isFinished, default as onFinished} from 'on-finished';
 import BindingAgent from './BindingAgent';
 import http from 'http';
 import Rx from 'rxjs/Rx';
@@ -65,18 +65,13 @@ export default function createTunnel(id, {endCallback, startCallback}) {
   function forwardRequest(req, res) {
     debug('processing http request');
 
-    let finished = false;
-    // flag if we already finished before we get a socket
-    // we can't respond to these requests
-    on_finished(res, function(err) {
-      debug('already finished, destroying connection');
-      finished = true;
-      req.connection.destroy();
-    });
-
     requests.next(socket => {
-      // the request already finished or tunnel disconnected
-      if (finished) return Promise.resolve({});
+      if (isFinished(res)) {
+        // the request already finished or tunnel disconnected
+        debug('already finished, destroying connection');
+        req.connection.destroy();
+        return Promise.resolve({});
+      }
 
       const agent = new BindingAgent({socket: socket});
 
@@ -94,7 +89,7 @@ export default function createTunnel(id, {endCallback, startCallback}) {
           res.writeHead(client_res.statusCode, client_res.headers);
 
           client_res.pipe(res);
-          on_finished(client_res, function(err) {
+          onFinished(client_res, function(err) {
             if (err) logError('client_res error', err);
             resolve();
           });
