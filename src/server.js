@@ -18,10 +18,10 @@ function findTunnel(configuredHost, req) {
   return tunnels.find(tunnelId);
 }
 
-function newTunnel(id, cb) {
+function newTunnel(id, maxConnCount, cb) {
   const endCallback = () => tunnels.remove(id);
   const startCallback = info => cb(R.merge(info, {id}));
-  const tunnel = createTunnel(id, {endCallback, startCallback});
+  const tunnel = createTunnel(id, maxConnCount, {endCallback, startCallback});
   tunnels.add(id, tunnel);
 }
 
@@ -59,7 +59,7 @@ module.exports = function(opt) {
       const id = generateId();
       debug('making new tunnel with id %s', id);
 
-      newTunnel(id, function(info) {
+      newTunnel(id, opt.maxConnCount, function(info) {
         const url = schema + '://' + id + '.' + req.headers.host;
         res.json(R.merge(info, {url: url}));
       });

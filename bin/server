@@ -18,6 +18,10 @@ const argv = optimist
   .options('host', {
     describe: 'listen on this host for outside requests'
   })
+  .options('max_conn_count', {
+    default: 20,
+    describe: 'max number of connections per client'
+  })
   .argv;
 
 if (argv.help) {
@@ -28,7 +32,8 @@ if (argv.help) {
 const server = require('../src/server')({
   secure: argv.secure,
   port: argv.port,
-  host: argv.host
+  host: argv.host,
+  maxConnCount: argv.max_conn_count
 });
 
 server.listen(argv.port, () => {
