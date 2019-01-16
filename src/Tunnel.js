@@ -6,7 +6,7 @@ import Rx from 'rxjs/Rx';
 import R from 'ramda';
 import httpProxy from 'http-proxy';
 
-export default function createTunnel(id, {endCallback, startCallback}) {
+export default function createTunnel(id, maxConnCount, {endCallback, startCallback}) {
   const debug = new Debug(`localtunnel:server:${id}`);
   const logError = new Debug(`localtunnel:server:error:${id}`);
 
@@ -113,7 +113,7 @@ export default function createTunnel(id, {endCallback, startCallback}) {
     debug('tcp server listening on port: %d', port);
 
     // Adding max_conn_count as this is required by the client
-    startCallback({port: port, max_conn_count: 10});
+    startCallback({port: port, max_conn_count: maxConnCount});
   });
 
   stop.subscribe(() => {
